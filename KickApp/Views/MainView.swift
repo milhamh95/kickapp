@@ -2,7 +2,6 @@ import SwiftUI
 
 struct MainView: View {
     @EnvironmentObject var appState: AppState
-    @EnvironmentObject var trackerService: AppTrackerService
 
     var body: some View {
         TabView {
@@ -22,7 +21,6 @@ struct MainView: View {
 
 struct AppGroupsTab: View {
     @EnvironmentObject var appState: AppState
-    @EnvironmentObject var trackerService: AppTrackerService
     @State private var showingAddGroup = false
 
     var body: some View {
@@ -40,18 +38,6 @@ struct AppGroupsTab: View {
                 )
             }
         }
-        .toolbar {
-            ToolbarItemGroup(placement: .primaryAction) {
-                if !trackerService.trackedApps.isEmpty {
-                    Button {
-                        appState.closeAll()
-                    } label: {
-                        Label("Close All (\(trackerService.trackedApps.count))", systemImage: "xmark.circle.fill")
-                    }
-                    .help("Close all apps launched by KickApp")
-                }
-            }
-        }
         .sheet(isPresented: $showingAddGroup) {
             AddGroupSheet()
         }
@@ -60,7 +46,6 @@ struct AppGroupsTab: View {
 
 struct SidebarView: View {
     @EnvironmentObject var appState: AppState
-    @EnvironmentObject var trackerService: AppTrackerService
     @Binding var showingAddGroup: Bool
 
     var body: some View {
@@ -73,31 +58,14 @@ struct SidebarView: View {
                             Button("Launch") {
                                 appState.launchGroup(group)
                             }
-                            let groupTracked = trackerService.trackedApps(for: group.id)
-                            if !groupTracked.isEmpty {
-                                Button("Close Group Apps (\(groupTracked.count))") {
-                                    appState.closeGroup(group.id)
-                                }
+                            Button("Close") {
+                                appState.closeGroup(group.id)
                             }
                             Divider()
                             Button("Delete", role: .destructive) {
                                 appState.deleteGroup(group)
                             }
                         }
-                }
-            }
-
-            if !trackerService.trackedApps.isEmpty {
-                Section("Running (\(trackerService.trackedApps.count))") {
-                    ForEach(trackerService.trackedApps) { tracked in
-                        HStack {
-                            Image(nsImage: IconCache.shared.icon(forBundleIdentifier: tracked.bundleIdentifier))
-                                .resizable()
-                                .frame(width: 16, height: 16)
-                            Text(tracked.name)
-                                .font(.caption)
-                        }
-                    }
                 }
             }
         }

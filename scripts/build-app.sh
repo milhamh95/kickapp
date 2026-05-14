@@ -81,6 +81,13 @@ else
     echo "    WARNING: ${SOURCE_ICON} not found, skipping icon generation."
 fi
 
+# Copy menu bar icon
+if [ -f "KickApp/Resources/MenuBarIcon.png" ]; then
+    cp KickApp/Resources/MenuBarIcon.png "${APP_BUNDLE}/Contents/Resources/MenuBarIcon.png"
+    cp KickApp/Resources/MenuBarIcon@2x.png "${APP_BUNDLE}/Contents/Resources/MenuBarIcon@2x.png"
+    echo "    Menu bar icon copied."
+fi
+
 # Generate PkgInfo
 echo -n "APPL????" > "${APP_BUNDLE}/Contents/PkgInfo"
 

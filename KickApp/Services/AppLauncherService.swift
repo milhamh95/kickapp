@@ -1,34 +1,32 @@
 import AppKit
 import Foundation
 
+struct LaunchedApp {
+    let bundleIdentifier: String
+}
+
 @MainActor
 final class AppLauncherService {
 
-    func launchGroup(_ group: AppGroup) async -> [TrackedApp] {
-        var trackedApps: [TrackedApp] = []
+    func launchGroup(_ group: AppGroup) async -> [LaunchedApp] {
+        var launched: [LaunchedApp] = []
 
         for (index, app) in group.apps.enumerated() {
             let appURL = URL(fileURLWithPath: app.path)
             let configuration = NSWorkspace.OpenConfiguration()
-            configuration.activates = (index == group.apps.count - 1) // only activate the last app
+            configuration.activates = (index == group.apps.count - 1)
 
             do {
-                let runningApp = try await NSWorkspace.shared.openApplication(
+                _ = try await NSWorkspace.shared.openApplication(
                     at: appURL,
                     configuration: configuration
                 )
-                let tracked = TrackedApp(
-                    bundleIdentifier: app.bundleIdentifier,
-                    name: app.name,
-                    runningApplication: runningApp,
-                    launchedByGroupId: group.id
-                )
-                trackedApps.append(tracked)
+                launched.append(LaunchedApp(bundleIdentifier: app.bundleIdentifier))
             } catch {
                 print("Failed to launch \(app.name): \(error.localizedDescription)")
             }
         }
 
-        return trackedApps
+        return launched
     }
 }

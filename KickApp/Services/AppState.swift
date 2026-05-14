@@ -10,10 +10,12 @@ final class AppState: ObservableObject {
     @Published var closeShortcutMap: [UUID: HotKeyShortcut] = [:]
 
     let launcherService = AppLauncherService()
-    let trackerService = AppTrackerService()
     let shortcutService = ShortcutService()
     let discoveryService = AppDiscoveryService()
     let persistenceService = PersistenceService()
+
+    /// Tracks bundle IDs launched per group so close shortcut knows what to quit.
+    private var launchedBundleIds: [UUID: Set<String>] = [:]
 
     private var cancellables = Set<AnyCancellable>()
 
@@ -24,7 +26,6 @@ final class AppState: ObservableObject {
         closeShortcutMap = saved.closeShortcutMap
         registerShortcuts()
 
-        // Auto-save when state changes
         $groups
             .combineLatest($launchShortcutMap, $closeShortcutMap)
             .dropFirst()
@@ -54,6 +55,7 @@ final class AppState: ObservableObject {
     func deleteGroup(_ group: AppGroup) {
         launchShortcutMap.removeValue(forKey: group.id)
         closeShortcutMap.removeValue(forKey: group.id)
+        launchedBundleIds.removeValue(forKey: group.id)
         groups.removeAll { $0.id == group.id }
         if selectedGroupId == group.id {
             selectedGroupId = groups.first?.id
@@ -92,15 +94,18 @@ final class AppState: ObservableObject {
     func launchGroup(_ group: AppGroup) {
         Task {
             let launched = await launcherService.launchGroup(group)
-            trackerService.track(launched)
+            launchedBundleIds[group.id] = Set(launched.map(\.bundleIdentifier))
         }
     }
 
-    func closeAll() {
-        trackerService.terminateAll()
-    }
-
     func closeGroup(_ groupId: UUID) {
-        trackerService.terminateGroup(groupId)
+        guard let bundleIds = launchedBundleIds[groupId] else { return }
+        let workspace = NSWorkspace.shared
+        for app in workspace.runningApplications {
+            if let bundleId = app.bundleIdentifier, bundleIds.contains(bundleId) {
+                app.terminate()
+            }
+        }
+        launchedBundleIds.removeValue(forKey: groupId)
     }
 }

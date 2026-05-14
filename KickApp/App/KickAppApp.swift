@@ -1,4 +1,47 @@
+import AppKit
 import SwiftUI
+
+/// Loads the menu bar icon from the app bundle's Resources directory.
+func loadMenuBarIcon() -> NSImage? {
+    // Try multiple paths to find the Resources directory
+    let candidates: [URL] = [
+        Bundle.main.bundleURL.appendingPathComponent("Contents/Resources"),
+        Bundle.main.resourceURL,
+        URL(fileURLWithPath: ProcessInfo.processInfo.arguments[0])
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("Resources"),
+    ].compactMap { $0 }
+
+    var iconPath: String?
+    var icon2xPath: String?
+    for dir in candidates {
+        let p = dir.appendingPathComponent("MenuBarIcon.png").path
+        if FileManager.default.fileExists(atPath: p) {
+            iconPath = p
+            icon2xPath = dir.appendingPathComponent("MenuBarIcon@2x.png").path
+            break
+        }
+    }
+
+    guard let iconPath, let image1x = NSImage(contentsOfFile: iconPath) else {
+        return nil
+    }
+
+    let combined = NSImage(size: NSSize(width: 18, height: 18))
+    if let rep1x = image1x.representations.first {
+        combined.addRepresentation(rep1x)
+    }
+    if let icon2xPath, let image2x = NSImage(contentsOfFile: icon2xPath),
+       let rep2x = image2x.representations.first {
+        combined.addRepresentation(rep2x)
+    }
+
+    combined.isTemplate = false
+    return combined
+}
+
+private let menuBarIcon: NSImage? = loadMenuBarIcon()
 
 @main
 struct KickAppApp: App {
@@ -6,28 +49,28 @@ struct KickAppApp: App {
     @StateObject private var appState = AppState()
 
     var body: some Scene {
-        // Menu bar icon — always visible for quick access
-        MenuBarExtra("KickApp", systemImage: "bolt.square.fill") {
+        MenuBarExtra {
             MenuBarContentView()
                 .environmentObject(appState)
-                .environmentObject(appState.trackerService)
+        } label: {
+            if let icon = menuBarIcon {
+                Image(nsImage: icon)
+            } else {
+                Image(systemName: "sportscourt.circle")
+            }
         }
 
-        // Settings window — opened from menu bar
         Window("KickApp Settings", id: "settings") {
             MainView()
                 .environmentObject(appState)
-                .environmentObject(appState.trackerService)
                 .environmentObject(appState.discoveryService)
         }
         .defaultSize(width: 800, height: 500)
     }
 }
 
-/// Simple menu shown from the menu bar icon.
 struct MenuBarContentView: View {
     @EnvironmentObject var appState: AppState
-    @EnvironmentObject var trackerService: AppTrackerService
     @Environment(\.openWindow) var openWindow
 
     var body: some View {
@@ -49,13 +92,6 @@ struct MenuBarContentView: View {
                                 .font(.caption)
                         }
                     }
-                }
-            }
-
-            if !trackerService.trackedApps.isEmpty {
-                Divider()
-                Button("Close All (\(trackerService.trackedApps.count) running)") {
-                    appState.closeAll()
                 }
             }
 

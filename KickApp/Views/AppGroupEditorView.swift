@@ -3,7 +3,6 @@ import SwiftUI
 struct AppGroupEditorView: View {
     let group: AppGroup
     @EnvironmentObject var appState: AppState
-    @EnvironmentObject var trackerService: AppTrackerService
     @State private var editedName: String = ""
     @State private var showingAppPicker = false
 
@@ -92,15 +91,12 @@ struct AppGroupEditorView: View {
                     }
                     .controlSize(.large)
 
-                    let groupTracked = trackerService.trackedApps(for: group.id)
-                    if !groupTracked.isEmpty {
-                        Button {
-                            appState.closeGroup(group.id)
-                        } label: {
-                            Label("Close Group Apps (\(groupTracked.count))", systemImage: "xmark.circle")
-                        }
-                        .controlSize(.large)
+                    Button {
+                        appState.closeGroup(group.id)
+                    } label: {
+                        Label("Close All", systemImage: "xmark.circle")
                     }
+                    .controlSize(.large)
                 }
             }
         }
